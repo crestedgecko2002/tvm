@@ -1,12 +1,18 @@
-# TVM-Based CPU Power Measurement and Prediction Dataset Collection
+# TVM-Based CPU Power Measurement Dataset Collection
 
-This repository is a customized TVM environment for collecting kernel-level CPU power, frequency, and latency data from multiple deep-learning workloads.
+This repository is a customized TVM environment for collecting kernel-level CPU power, frequency, and latency measurements from multiple deep-learning workloads.
 
-The project extends TVM runtime profiling so that model tuning results can be evaluated under controlled CPU-frequency conditions. The collected measurements are stored as CSV files and can later be used for power analysis or machine-learning-based power prediction.
+The project extends the TVM runtime profiling implementation and provides scripts for:
+
+* model-specific TVM tuning
+* CPU warmup evaluation
+* automated power-data collection
+* repeated experiments across multiple CPU-frequency settings
+* CSV dataset generation for downstream analysis and power prediction
 
 ---
 
-## 1. Project Overview
+## 1. Overview
 
 The overall workflow is:
 
@@ -15,29 +21,73 @@ Model-specific TVM tuning
         ↓
 Generated tuning logs
         ↓
-Warmup stability evaluation
+CPU warmup evaluation
         ↓
 Kernel-level power, frequency, and latency measurement
         ↓
 CSV dataset generation
         ↓
-Power analysis or prediction model training
+Power analysis or prediction-model training
 ```
 
-The repository includes:
-
-* model-specific TVM tuning scripts
-* a dataset-collection script
-* a shell script for running the full experiment workflow
-* warmup-evaluation scripts
-* custom runtime-level profiling functions added to TVM
-* generated CSV measurement results
+For convenience, the complete experiment workflow can be executed through a shell script.
 
 ---
 
-## 2. Repository Structure
+## 2. Run the Complete Experiment Workflow
 
-The main project files are located in:
+The simplest way to execute the configured experiment is:
+
+```bash
+cd data_collection
+bash run_experiment.sh
+```
+
+`run_experiment.sh` is the main entry point for the experiment. It is intended to automate repeated dataset collection across the configured:
+
+* model workloads
+* tuning-log directories
+* CPU-frequency settings
+* measurement parameters
+* output CSV paths
+
+Conceptually, the script performs the following sequence:
+
+```text
+Set CPU-frequency configuration
+        ↓
+Select the tuning-log directory
+        ↓
+Run dataset.py with the configured arguments
+        ↓
+Save the measured results as a CSV file
+        ↓
+Repeat for the next frequency or workload
+```
+
+Before running the script, inspect its configuration values and update them for the target machine if necessary.
+
+```bash
+nano data_collection/run_experiment.sh
+```
+
+Typical values that may need adjustment include:
+
+```text
+CPU frequencies
+model names
+tuning-log directories
+output file names
+TVM target configuration
+minimum measurement duration
+timeout threshold
+```
+
+---
+
+## 3. Repository Structure
+
+The main experiment scripts are located in:
 
 ```text
 data_collection/
@@ -64,59 +114,162 @@ data_collection/
 
 ### File Roles
 
-| File                     | Description                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataset.py`             | Measures kernel-level power, CPU frequency, and latency using previously generated TVM tuning logs. Results are written to CSV files. |
-| `run_experiment.sh`      | Runs the complete measurement workflow across configured frequencies and workloads.                                                   |
-| `tune_quen2.5_3b.py`     | TVM tuning script for Qwen2.5 3B workloads.                                                                                           |
-| `tuning_bert.py`         | TVM tuning script for BERT workloads.                                                                                                 |
-| `tuning_densenet.py`     | TVM tuning script for DenseNet workloads.                                                                                             |
-| `tuning_distilbert.py`   | TVM tuning script for DistilBERT workloads.                                                                                           |
-| `tuning_gpt2.py`         | TVM tuning script for GPT-2 workloads.                                                                                                |
-| `tuning_llama.py`        | TVM tuning script for LLaMA workloads.                                                                                                |
-| `tuning_mobilenet.py`    | TVM tuning script for MobileNet workloads.                                                                                            |
-| `tuning_resnet.py`       | TVM tuning script for ResNet workloads.                                                                                               |
-| `tuning_roberta_base.py` | TVM tuning script for RoBERTa-base workloads.                                                                                         |
-| `warmup_evaluator.py`    | Checks CPU warmup behavior and initial measurement stability before the main experiment.                                              |
-| `warmup_evaluator.sh`    | Convenience wrapper for running `warmup_evaluator.py` with predefined arguments.                                                      |
+| File                     | Description                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `run_experiment.sh`      | Runs the configured power-measurement workflow across multiple workloads and CPU-frequency settings.        |
+| `dataset.py`             | Collects kernel-level latency, CPU-frequency, and power-related measurements from existing TVM tuning logs. |
+| `tune_quen2.5_3b.py`     | TVM tuning script for Qwen2.5 3B workloads.                                                                 |
+| `tuning_bert.py`         | TVM tuning script for BERT workloads.                                                                       |
+| `tuning_densenet.py`     | TVM tuning script for DenseNet workloads.                                                                   |
+| `tuning_distilbert.py`   | TVM tuning script for DistilBERT workloads.                                                                 |
+| `tuning_gpt2.py`         | TVM tuning script for GPT-2 workloads.                                                                      |
+| `tuning_llama.py`        | TVM tuning script for LLaMA workloads.                                                                      |
+| `tuning_mobilenet.py`    | TVM tuning script for MobileNet workloads.                                                                  |
+| `tuning_resnet.py`       | TVM tuning script for ResNet workloads.                                                                     |
+| `tuning_roberta_base.py` | TVM tuning script for RoBERTa-base workloads.                                                               |
+| `warmup_evaluator.py`    | Evaluates CPU warmup behavior and initial measurement stability.                                            |
+| `warmup_evaluator.sh`    | Runs `warmup_evaluator.py` with predefined arguments.                                                       |
 
-Generated tuning logs and CSV measurement files may also appear inside `data_collection/` or related tuning-log directories.
+Generated tuning logs and CSV datasets may also appear inside `data_collection/` or the corresponding tuning-log directories.
 
 ---
 
-## 3. Custom TVM Runtime Modifications
+## 4. Supported Workloads
+
+The current scripts cover several deep-learning workload categories.
+
+| Category                         | Models                         |
+| -------------------------------- | ------------------------------ |
+| Large language models            | Qwen2.5 3B, LLaMA, GPT-2       |
+| Encoder-based transformer models | BERT, DistilBERT, RoBERTa-base |
+| Computer-vision CNN models       | ResNet, DenseNet, MobileNet    |
+
+Using multiple workload categories makes it possible to compare CPU power behavior across different operator distributions, tensor shapes, and computational characteristics.
+
+---
+
+## 5. Detailed Usage
+
+The automated shell script is recommended for repeated experiments. The individual Python scripts can also be run separately when tuning a new model, testing a specific configuration, or resuming an interrupted measurement.
+
+### 5.1 Run Model-Specific TVM Tuning
+
+Each model has a dedicated TVM tuning script.
+
+For example:
+
+```bash
+cd data_collection
+python tuning_resnet.py
+```
+
+Available tuning scripts include:
+
+```bash
+python tune_quen2.5_3b.py
+python tuning_bert.py
+python tuning_densenet.py
+python tuning_distilbert.py
+python tuning_gpt2.py
+python tuning_llama.py
+python tuning_mobilenet.py
+python tuning_resnet.py
+python tuning_roberta_base.py
+```
+
+Each script generates tuning logs for its corresponding workload. These logs are later used by `dataset.py` during power-data collection.
+
+The exact internal configuration may differ by model because the workload shapes, model architecture, and tuning directories are model-specific.
+
+---
+
+### 5.2 Run CPU Warmup Evaluation
+
+Before collecting the main dataset, run the warmup evaluator:
+
+```bash
+cd data_collection
+bash warmup_evaluator.sh
+```
+
+The shell script is a convenience wrapper for:
+
+```text
+warmup_evaluator.py
+```
+
+Its purpose is to simplify execution by passing the required arguments automatically.
+
+The warmup stage helps verify that the CPU operating condition is sufficiently stable before the main power-measurement workflow begins.
+
+---
+
+### 5.3 Run Dataset Collection Manually
+
+The main power-data collection script is:
+
+```text
+dataset.py
+```
+
+A representative command is:
+
+```bash
+python dataset.py \
+  --work-dir tuning_logs_resnet \
+  --out ./resnet_number5_repeat5_freq3100.csv \
+  --target "llvm -mtriple=x86_64-linux-gnu -mcpu=skylake-avx512 -num-cores=16" \
+  --number 1 \
+  --repeat 5 \
+  --start-idx 0 \
+  --min-repeat-ms 400 \
+  --timeout-sec 15
+```
+
+### `dataset.py` Arguments
+
+| Argument          | Description                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `--work-dir`      | Directory containing the TVM tuning logs for the target model.                                                            |
+| `--out`           | Output path for the generated CSV dataset.                                                                                |
+| `--target`        | TVM LLVM target configuration used for compilation and execution.                                                         |
+| `--number`        | Initial number of kernel executions grouped into one timing measurement.                                                  |
+| `--repeat`        | Number of repeated measurements collected for each kernel configuration.                                                  |
+| `--start-idx`     | Index from which dataset collection begins. Useful when resuming an interrupted experiment.                               |
+| `--min-repeat-ms` | Minimum measurement duration in milliseconds. Kernel execution may be repeated internally until this duration is reached. |
+| `--timeout-sec`   | Timeout threshold for abnormally long workloads.                                                                          |
+
+The arguments should be selected according to the CPU platform, model workload, desired measurement stability, and acceptable experiment duration.
+
+---
+
+## 6. Custom TVM Runtime Modifications
 
 This repository is not an unmodified TVM source tree.
 
-The runtime profiling implementation has been extended in:
+The TVM runtime profiling implementation has been extended in:
 
 ```text
 src/runtime/profiling.cc
 ```
 
-The custom implementation adds runtime-level evaluators used by the measurement scripts.
+The modified runtime includes custom evaluator functions for the power-measurement workflow.
 
-### Added Evaluators
+### Added Runtime Evaluators
 
-| Evaluator                                  | Purpose                                                                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Warmup evaluator                           | Runs workloads repeatedly before the main experiment to verify that the CPU reaches a sufficiently stable operating condition. |
-| Power / energy-latency-frequency evaluator | Measures workload execution while collecting latency, CPU frequency, and power-related data.                                   |
+| Evaluator                                  | Purpose                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Warmup evaluator                           | Repeatedly executes workloads to evaluate CPU warmup behavior and measurement stability.   |
+| Power / energy-latency-frequency evaluator | Measures kernel execution while collecting latency, CPU-frequency, and power-related data. |
 
-The relevant runtime registry entries are intended to expose functions such as:
+The corresponding TVM runtime registry functions are intended to be callable from Python scripts through entries such as:
 
 ```text
 runtime.profiling.warmup_evaluator
 runtime.profiling.energy_latency_freq_evaluator
 ```
 
-These functions can be called from Python through TVM's runtime registry.
-
-### Why Runtime-Level Modifications Are Needed
-
-Standard timing evaluation measures execution latency, but this project also needs power-related measurements under controlled CPU conditions.
-
-The custom runtime flow is conceptually:
+The measurement flow is:
 
 ```text
 Python experiment script
@@ -129,32 +282,18 @@ Repeated kernel execution
         ↓
 Latency, CPU-frequency, and power-related measurement
         ↓
-Return measurement values to Python
+Return results to Python
         ↓
-Write results to CSV
+Write the dataset to a CSV file
 ```
 
 Because `profiling.cc` is compiled into TVM, TVM must be rebuilt whenever this file is modified.
 
 ---
 
-## 4. Supported Workload Categories
+## 7. Environment Setup
 
-The current scripts cover multiple model families.
-
-| Category                         | Models                         |
-| -------------------------------- | ------------------------------ |
-| Large language models            | Qwen2.5 3B, LLaMA, GPT-2       |
-| Encoder-based transformer models | BERT, DistilBERT, RoBERTa-base |
-| Computer-vision CNN models       | ResNet, DenseNet, MobileNet    |
-
-This makes it possible to compare power behavior across workloads with different operator distributions, tensor shapes, and computational characteristics.
-
----
-
-## 5. Environment Setup
-
-### Clone the Repository
+### 7.1 Clone the Repository
 
 Because TVM uses third-party submodules, clone the repository recursively:
 
@@ -169,7 +308,7 @@ For an existing clone, initialize or update the submodules with:
 git submodule update --init --recursive
 ```
 
-### Conda Environment
+### 7.2 Activate the Conda Environment
 
 The development environment used for this project is:
 
@@ -183,11 +322,11 @@ Activate it with:
 conda activate tvm19
 ```
 
-The exact package installation steps may differ depending on the machine configuration.
+The required package installation steps may differ depending on the machine configuration.
 
 ---
 
-## 6. Build TVM
+## 8. Build TVM
 
 Create and enter the build directory:
 
@@ -202,7 +341,7 @@ Prepare the TVM CMake configuration:
 cp ../cmake/config.cmake .
 ```
 
-Configure and build:
+Configure and build TVM:
 
 ```bash
 cmake ..
@@ -215,7 +354,13 @@ Return to the repository root:
 cd ..
 ```
 
-If `src/runtime/profiling.cc` is modified, rebuild TVM before running the Python measurement scripts:
+Depending on the local Python setup, the TVM Python path may also need to be exported:
+
+```bash
+export PYTHONPATH="$PWD/python:${PYTHONPATH}"
+```
+
+After modifying `src/runtime/profiling.cc`, rebuild TVM:
 
 ```bash
 cd build
@@ -223,17 +368,11 @@ make -j$(nproc)
 cd ..
 ```
 
-Depending on the local Python setup, the TVM Python path may also need to be exported:
-
-```bash
-export PYTHONPATH="$PWD/python:${PYTHONPATH}"
-```
-
 ---
 
-## 7. CPU Frequency Control
+## 9. CPU-Frequency Control
 
-For reproducible power measurements, the CPU frequency should be controlled before each experiment.
+For reproducible measurements, the CPU-frequency configuration should be controlled before running the experiment.
 
 A typical setup is:
 
@@ -249,9 +388,7 @@ This example fixes the CPU frequency near:
 3.1 GHz
 ```
 
-The frequency value should be adjusted for each experiment.
-
-Examples:
+Example frequency values:
 
 ```text
 2200000 → approximately 2.2 GHz
@@ -269,118 +406,7 @@ cpupower frequency-info
 
 ---
 
-## 8. Run Model Tuning
-
-Each model has its own TVM tuning script.
-
-Example:
-
-```bash
-cd data_collection
-python tuning_resnet.py
-```
-
-Other examples:
-
-```bash
-python tuning_bert.py
-python tuning_densenet.py
-python tuning_distilbert.py
-python tuning_gpt2.py
-python tuning_llama.py
-python tuning_mobilenet.py
-python tuning_roberta_base.py
-python tune_quen2.5_3b.py
-```
-
-Each tuning script generates tuning logs for its corresponding workload.
-
-The generated log directory should be checked before running the dataset-collection stage.
-
----
-
-## 9. Run Warmup Evaluation
-
-Before the main dataset collection, run the warmup evaluator:
-
-```bash
-cd data_collection
-bash warmup_evaluator.sh
-```
-
-The shell script acts as a wrapper around:
-
-```text
-warmup_evaluator.py
-```
-
-and provides the necessary arguments in a convenient form.
-
-The warmup stage is used to inspect whether the CPU operating condition has stabilized sufficiently before power measurements begin.
-
----
-
-## 10. Collect Power Measurement Data
-
-The main dataset-generation script is:
-
-```text
-dataset.py
-```
-
-A representative execution format is:
-
-```bash
-python dataset.py \
-  --work-dir tuning_logs_resnet \
-  --out ./resnet_number5_repeat5_freq3100.csv \
-  --target "llvm -mtriple=x86_64-linux-gnu -mcpu=skylake-avx512 -num-cores=16" \
-  --number 1 \
-  --repeat 5 \
-  --start-idx 0 \
-  --min-repeat-ms 400 \
-  --timeout-sec 15
-```
-
-### Common Arguments
-
-| Argument          | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `--work-dir`      | Directory containing TVM tuning logs.                   |
-| `--out`           | Output CSV file path.                                   |
-| `--target`        | TVM LLVM target configuration.                          |
-| `--number`        | Number of function calls grouped into one measurement.  |
-| `--repeat`        | Number of repeated measurements.                        |
-| `--start-idx`     | Starting index in the tuning-log workload list.         |
-| `--min-repeat-ms` | Minimum execution duration used for stable measurement. |
-| `--timeout-sec`   | Timeout threshold for abnormally long workloads.        |
-
-The exact arguments may be adjusted depending on the model, workload size, measurement duration, and CPU configuration.
-
----
-
-## 11. Run the Full Experiment Workflow
-
-To run the configured end-to-end experiment workflow:
-
-```bash
-cd data_collection
-bash run_experiment.sh
-```
-
-This script is intended to automate repeated experiments across the selected:
-
-* models
-* CPU frequencies
-* tuning-log directories
-* measurement settings
-* output CSV paths
-
-Before running it, inspect and update the script variables to match the local environment.
-
----
-
-## 12. Output CSV Files
+## 10. Output CSV Files
 
 Generated CSV files follow a naming pattern similar to:
 
@@ -392,12 +418,12 @@ bert_number5_repeat5_freq3000.csv
 bert_number5_repeat5_freq3100.csv
 ```
 
-The name encodes:
+The file name records the experiment configuration:
 
 ```text
 model name
-measurement number
-repeat count
+number parameter
+repeat parameter
 CPU frequency
 ```
 
@@ -407,19 +433,17 @@ For example:
 bert_number5_repeat5_freq3100.csv
 ```
 
-indicates a BERT measurement dataset collected with:
+represents a BERT dataset collected using:
 
 ```text
 number = 5
 repeat = 5
-frequency ≈ 3.1 GHz
+CPU frequency ≈ 3.1 GHz
 ```
-
-The CSV contents are intended for downstream analysis and power-prediction experiments.
 
 ---
 
-## 13. Recommended Experimental Procedure
+## 11. Recommended Experimental Procedure
 
 For consistent measurements, use the following order:
 
@@ -428,23 +452,23 @@ For consistent measurements, use the following order:
 2. Confirm that TVM has been rebuilt after runtime modifications
 3. Fix the CPU governor to performance mode
 4. Set the desired CPU frequency
-5. Verify the current CPU-frequency state
+5. Verify the CPU-frequency state
 6. Run the warmup evaluator
-7. Run model-specific tuning if tuning logs do not already exist
-8. Run dataset.py or run_experiment.sh
-9. Check the generated CSV file
-10. Repeat for each target frequency and model
+7. Generate tuning logs if they do not already exist
+8. Run run_experiment.sh for automated collection
+9. Check the generated CSV files
+10. Repeat or resume individual cases with dataset.py if necessary
 ```
 
 ---
 
-## 14. Notes on Reproducibility
+## 12. Notes on Reproducibility
 
 Power measurements can vary due to:
 
 * CPU temperature
 * background processes
-* frequency-governor behavior
+* CPU-frequency governor behavior
 * system load
 * workload duration
 * cache state
@@ -456,16 +480,16 @@ For more stable results:
 
 ```text
 - use a fixed CPU governor
-- set upper and lower frequency bounds to the same value
-- run a warmup phase before data collection
+- set the upper and lower CPU-frequency bounds to the same value
+- run a warmup phase before dataset collection
 - keep the machine workload as consistent as possible
-- use the same target configuration across experiments
+- use the same TVM target configuration across experiments
 - inspect timeout cases separately
 ```
 
 ---
 
-## 15. Git Notes
+## 13. Git Notes
 
 This repository includes TVM third-party submodules under:
 
@@ -481,38 +505,8 @@ git -C 3rdparty/cutlass_fpA_intB_gemm status --short
 git -C 3rdparty/libflash_attn status --short
 ```
 
-Generated CSV files can become large. If they do not need to be committed, add an ignore rule:
+Generated CSV files can become large. If they do not need to be committed, add the following rule to `.gitignore`:
 
 ```gitignore
 data_collection/*.csv
 ```
-
----
-
-## 16. Summary
-
-This repository extends TVM runtime profiling for CPU power-measurement experiments.
-
-The main components are:
-
-```text
-src/runtime/profiling.cc
-        → custom runtime-level measurement support
-
-data_collection/tuning_*.py
-        → model-specific TVM tuning
-
-data_collection/warmup_evaluator.py
-        → warmup and stability evaluation
-
-data_collection/dataset.py
-        → kernel-level power, frequency, and latency collection
-
-data_collection/run_experiment.sh
-        → automated experiment execution
-
-CSV outputs
-        → datasets for power analysis and prediction
-```
-
-The project is designed to collect reproducible CPU power datasets across multiple deep-learning workload categories and CPU-frequency conditions.
