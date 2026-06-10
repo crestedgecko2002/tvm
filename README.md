@@ -436,8 +436,8 @@ bert_number5_repeat5_freq3100.csv
 represents a BERT dataset collected using:
 
 ```text
-number = 5
-repeat = 5
+min_number = 5
+min_repeat = 5
 CPU frequency ≈ 3.1 GHz
 ```
 
@@ -453,11 +453,10 @@ For consistent measurements, use the following order:
 3. Fix the CPU governor to performance mode
 4. Set the desired CPU frequency
 5. Verify the CPU-frequency state
-6. Run the warmup evaluator
-7. Generate tuning logs if they do not already exist
-8. Run run_experiment.sh for automated collection
-9. Check the generated CSV files
-10. Repeat or resume individual cases with dataset.py if necessary
+6. Run the warmup evaluator and check stable runtime for the CPU
+7. Run run_experiment.sh for automated collection
+8. Check the generated CSV files
+9. Repeat or resume individual cases with dataset.py if necessary
 ```
 
 ---
