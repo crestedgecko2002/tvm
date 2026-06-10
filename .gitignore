@@ -274,3 +274,6 @@ tvm-site/
 
 # GDB history file
 .gdb_history
+
+# Local experiment outputs
+data_collection/*.csv
